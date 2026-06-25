@@ -5,9 +5,11 @@ import android.content.Context
 import android.content.Intent
 import android.os.IBinder
 import androidx.core.content.ContextCompat
+import com.ph.processchecker.ext.logD
 
 class ForegroundService : Service() {
     companion object {
+        private const val TAG = "ForegroundService"
         const val EXTRA_COUNT = "extra_count"
 
         fun startForegroundService(context: Context, count: Int) {
@@ -33,6 +35,7 @@ class ForegroundService : Service() {
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         val count = intent?.getIntExtra(EXTRA_COUNT, 0) ?: 0
+        logD(TAG) { "onStartCommand: count = $count" }
         startForeground(
             NotifyManager.NOTIFICATION_ID,
             NotifyManager.buildNotification(this, count)

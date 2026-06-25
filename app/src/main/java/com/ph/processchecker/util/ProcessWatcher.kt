@@ -3,6 +3,8 @@ package com.ph.processchecker.util
 import android.app.Activity
 import android.content.Context
 import android.content.Intent
+import android.os.Handler
+import android.os.Looper
 import com.ph.processchecker.App
 import com.ph.processchecker.ext.logD
 import com.ph.processchecker.model.AppInfo
@@ -17,8 +19,9 @@ import kotlin.time.Duration.Companion.milliseconds
 
 object ProcessWatcher {
     private const val TAG = "ProcessWatcher"
+    private val handler = Handler(Looper.getMainLooper())
+    private var watchRunnable: Runnable? = null
     private var job: Job? = null
-
     fun startWatch(
         context: Context = App.instance,
         backActivity: Class<out Activity>,
@@ -26,6 +29,7 @@ object ProcessWatcher {
         targetApp: AppInfo,
         intervalMs: Long = 500L
     ) {
+        logD(TAG) { "startWatch $targetApp" }
         stopWatch()
         job = CoroutineScope(Dispatchers.Default).launch {
             while (isActive) {
@@ -33,10 +37,14 @@ object ProcessWatcher {
                 val targetGone = targetApp in oldList && targetApp !in current
                 if (targetGone) {
                     withContext(Dispatchers.Main) {
-                        val it = Intent(context, backActivity).apply {
-                            addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-                        }
-                        context.startActivity(it)
+                        handler.post(Runnable {
+                            context.startActivity(Intent(context, backActivity).apply {
+                                flags =
+                                    Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
+                            })
+                        }.also {
+                            watchRunnable = it
+                        })
                     }
                     logD(TAG) { "监听到结束运行 $targetApp" }
                     break
@@ -49,5 +57,7 @@ object ProcessWatcher {
     fun stopWatch() {
         job?.cancel()
         job = null
+        watchRunnable?.let { handler.removeCallbacks(it) }
+        watchRunnable = null
     }
 }

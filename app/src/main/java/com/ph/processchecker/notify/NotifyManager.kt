@@ -3,10 +3,13 @@ package com.ph.processchecker.notify
 import android.app.Notification
 import android.app.NotificationChannel
 import android.app.NotificationManager
+import android.app.PendingIntent
 import android.content.Context
+import android.content.Intent
 import android.os.Build
 import androidx.core.app.NotificationCompat
 import com.ph.processchecker.R
+import com.ph.processchecker.page.MainActivity
 
 object NotifyManager {
     const val CHANNEL_ID = "process_monitor_channel"
@@ -27,12 +30,19 @@ object NotifyManager {
     }
 
     fun buildNotification(context: Context, count: Int): Notification {
+        val pendingIntent = PendingIntent.getActivity(
+            context,
+            NOTIFICATION_ID,
+            Intent(context, MainActivity::class.java),
+            PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT
+        )
         return NotificationCompat.Builder(context, CHANNEL_ID)
-            .setContentTitle("间隔30分钟监测中")
-            .setContentText("当前正在运行${count}个进程")
+            .setContentTitle(context.getString(R.string.notify_title))
+            .setContentText(context.getString(R.string.notify_content, count))
             .setSmallIcon(R.mipmap.ic_launcher)
             .setOngoing(true)
             .setPriority(NotificationCompat.PRIORITY_LOW)
+            .setContentIntent(pendingIntent)
             .build()
     }
 }

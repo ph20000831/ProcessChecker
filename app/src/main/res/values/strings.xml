@@ -1,6 +1,9 @@
 <resources>
     <string name="app_name">进程监测</string>
+    <string name="notify">通知</string>
     <string name="usage_stats_permission_title">请授予应用使用统计权限</string>
     <string name="usage_stats_permission_desc">应用需要使用统计权限才能获取应用使用情况</string>
     <string name="turn_on">开启</string>
+    <string name="notify_title">间隔1小时监测中</string>
+    <string name="notify_content">当前正在运行%d个进程</string>
 </resources>

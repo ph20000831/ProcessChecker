@@ -1,12 +1,15 @@
 package com.ph.processchecker.ext
 
+import android.Manifest
 import android.app.Activity
 import android.app.AppOpsManager
 import android.content.Context
 import android.content.Intent
+import android.content.pm.PackageManager
 import android.os.Handler
 import android.os.Looper
 import android.os.Process
+import androidx.core.content.ContextCompat
 
 /**
  * 是否具有PACKAGE_USAGE_STATS权限
@@ -21,8 +24,22 @@ fun Context.hasUsageStatsPermission(): Boolean {
     return mode == AppOpsManager.MODE_ALLOWED
 }
 
+/**
+ * 检查通知权限
+ */
+fun Context.hasNotificationPermission(): Boolean {
+    return if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.TIRAMISU) {
+        ContextCompat.checkSelfPermission(
+            this,
+            Manifest.permission.POST_NOTIFICATIONS
+        ) == PackageManager.PERMISSION_GRANTED
+    } else {
+        // 低版本需要用NotificationManagerCompat检查系统通知总开关
+        androidx.core.app.NotificationManagerCompat.from(this).areNotificationsEnabled()
+    }
+}
+
 private val handler = Handler(Looper.getMainLooper())
-private const val checkInterval = 150L // 150ms间隔
 private var permissionCheckRunnable: Runnable? = null
 
 /**
@@ -30,12 +47,15 @@ private var permissionCheckRunnable: Runnable? = null
  */
 fun Context.startListenPermissionGranted(
     backActivity: Class<out Activity>,
-    clear: Boolean = false
+    permissionAction: () -> Boolean,
+    clear: Boolean = false,
+    checkInterval: Long = 300L
 ) {
+    logD(this.javaClass.simpleName) { "startListen" }
     stopListenPermissionGranted()
     permissionCheckRunnable = object : Runnable {
         override fun run() {
-            val isGranted = hasUsageStatsPermission()
+            val isGranted = permissionAction()
             if (isGranted) {
                 stopListenPermissionGranted()
                 val intent = Intent(this@startListenPermissionGranted, backActivity).apply {
@@ -46,6 +66,7 @@ fun Context.startListenPermissionGranted(
                     }
                 }
                 startActivity(intent)
+                logD(this@startListenPermissionGranted.javaClass.simpleName) { "endListen" }
             } else {
                 // 继续监听
                 handler.postDelayed(this, checkInterval)

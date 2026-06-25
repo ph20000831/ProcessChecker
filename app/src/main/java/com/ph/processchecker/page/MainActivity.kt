@@ -1,7 +1,9 @@
 package com.ph.processchecker.page
 
+import android.Manifest
 import android.content.Intent
 import android.graphics.Canvas
+import android.os.Build
 import android.os.Bundle
 import android.provider.Settings
 import androidx.activity.ComponentActivity
@@ -9,7 +11,6 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
@@ -30,6 +31,8 @@ import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Switch
+import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
@@ -53,16 +56,18 @@ import androidx.compose.ui.unit.sp
 import androidx.core.graphics.createBitmap
 import androidx.core.graphics.drawable.toDrawable
 import androidx.core.net.toUri
-import androidx.lifecycle.compose.LifecycleResumeEffect
+import androidx.lifecycle.compose.LifecycleStartEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.ph.processchecker.R
 import com.ph.processchecker.ext.getDate
+import com.ph.processchecker.ext.hasNotificationPermission
 import com.ph.processchecker.ext.hasUsageStatsPermission
 import com.ph.processchecker.ext.logD
 import com.ph.processchecker.ext.startListenPermissionGranted
 import com.ph.processchecker.ext.stopListenPermissionGranted
 import com.ph.processchecker.model.AppInfo
+import com.ph.processchecker.notify.ForegroundService
 import com.ph.processchecker.ui.composable.AppImage
 import com.ph.processchecker.ui.theme.AppTheme
 import com.ph.processchecker.util.ProcessWatcher
@@ -104,13 +109,19 @@ private fun MainContent(
 ) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
-    LifecycleResumeEffect(Unit) {
-        logD(TAG) { "Resume" }
+    LaunchedEffect(uiState.loading) {
+        // 数据同步更新通知
+        if (uiState.checkedNotifySwitch && !uiState.loading) {
+            ForegroundService.startForegroundService(context, uiState.data.size)
+        }
+    }
+    LifecycleStartEffect(Unit) {
+        logD(TAG) { "Start" }
         stopListenPermissionGranted()
         ProcessWatcher.stopWatch()
         handleUiIntent(MainContract.UiIntent.Refresh)
-        onPauseOrDispose {
-            logD(TAG) { "Pause" }
+        onStopOrDispose {
+            logD(TAG) { "Stop" }
         }
     }
     val appSettingJumpLauncher = rememberLauncherForActivityResult(
@@ -125,6 +136,18 @@ private fun MainContent(
 //            if (context.hasUsageStatsPermission()) {
 //                handleUiIntent(MainContract.UiIntent.Refresh)
 //            }
+        }
+    )
+    val notifyPermissionLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.RequestPermission(),
+        onResult = { granted: Boolean ->
+            if (granted) {
+                // 权限授予，可以发送通知
+                ForegroundService.startForegroundService(context, uiState.data.size)
+                handleUiIntent(MainContract.UiIntent.ChangeCheckedNotifySwitch(true))
+            } else {
+                // 用户拒绝权限
+            }
         }
     )
     val usageStatsPermissionSheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
@@ -154,21 +177,64 @@ private fun MainContent(
                         fontWeight = FontWeight(500),
                         color = Color(0xFF1A1A1A)
                     )
+                    Spacer(Modifier.weight(1f))
+                    Text(
+                        text = stringResource(R.string.notify),
+                        fontSize = 16.sp,
+                        fontWeight = FontWeight(400),
+                        color = Color(0xFF999999)
+                    )
+                    Spacer(Modifier.width(8.dp))
+                    Switch(
+                        checked = uiState.checkedNotifySwitch,
+                        onCheckedChange = { checked ->
+                            if (checked) {
+                                if (context.hasNotificationPermission()) {
+                                    ForegroundService.startForegroundService(
+                                        context,
+                                        uiState.data.size
+                                    )
+                                    handleUiIntent(
+                                        MainContract.UiIntent.ChangeCheckedNotifySwitch(
+                                            true
+                                        )
+                                    )
+                                } else {
+                                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                                        notifyPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
+                                    }
+                                }
+                            } else {
+                                ForegroundService.stopForegroundService(context)
+                                handleUiIntent(MainContract.UiIntent.ChangeCheckedNotifySwitch(false))
+                            }
+                        },
+                        colors = SwitchDefaults.colors(
+                            checkedThumbColor = Color.White,
+                            checkedTrackColor = Color(0xFF1462FA),
+                            uncheckedThumbColor = Color.White,
+                            uncheckedTrackColor = Color(0xFFD4D4D4),
+                        )
+                    )
+                    Spacer(Modifier.width(16.dp))
                 }
             }
             uiState.data.forEach {
                 item {
-                    AppItem(appInfo = it, onClick = {
-                        appSettingJumpLauncher.launch(Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS).apply {
-                            data = "package:${it.packageName}".toUri()
-                            flags = Intent.FLAG_ACTIVITY_NEW_TASK
-                        })
-                        ProcessWatcher.startWatch(
-                            backActivity = MainActivity::class.java,
-                            oldList = uiState.data,
-                            targetApp = it,
-                        )
-                    })
+                    AppItem(
+                        appInfo = it,
+                        onClick = {
+                            appSettingJumpLauncher.launch(Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS).apply {
+                                data = "package:${it.packageName}".toUri()
+//                                flags = Intent.FLAG_ACTIVITY_NEW_TASK
+                            })
+                            ProcessWatcher.startWatch(
+                                backActivity = MainActivity::class.java,
+                                oldList = uiState.data,
+                                targetApp = it,
+                            )
+                        }
+                    )
                 }
             }
         }
@@ -191,7 +257,11 @@ private fun MainContent(
                     usageStatsPermissionLauncher.launch(
                         Intent(Settings.ACTION_USAGE_ACCESS_SETTINGS)
                     )
-                    context.startListenPermissionGranted(MainActivity::class.java)
+                    context.startListenPermissionGranted(
+                        backActivity = MainActivity::class.java,
+                        permissionAction = {
+                            context.hasUsageStatsPermission()
+                        })
                     scope.launch { usageStatsPermissionSheetState.hide() }.invokeOnCompletion {
                         if (!usageStatsPermissionSheetState.isVisible) {
                             hideUsageStatsPermissionBottomSheet()
@@ -200,7 +270,7 @@ private fun MainContent(
                 })
             }
         }
-        AnimatedVisibility(uiState.loading) {
+        if (uiState.loading) {
             Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                 CircularProgressIndicator()
             }

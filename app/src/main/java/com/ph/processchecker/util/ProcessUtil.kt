@@ -1,21 +1,33 @@
 package com.ph.processchecker.util
 
-import android.app.AppOpsManager
 import android.app.usage.UsageStatsManager
 import android.content.Context
 import android.content.pm.ApplicationInfo
 import android.content.pm.PackageManager
+import android.graphics.drawable.Drawable
 import android.os.Build
-import android.util.Log
+import androidx.collection.LruCache
 import com.ph.processchecker.App
-import com.ph.processchecker.ext.logD
 import com.ph.processchecker.model.AppInfo
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
 object ProcessUtil {
-    private const val TAG = "ProcessUtil"
     val whiteList: MutableList<String> = mutableListOf()
+
+    private val iconCache = object :
+        LruCache<String, Drawable>((Runtime.getRuntime().maxMemory() / 1024).toInt() / 10) {
+        override fun sizeOf(key: String, value: Drawable): Int {
+            return if (value.intrinsicWidth > 0 && value.intrinsicHeight > 0) {
+                // ARGB_8888 每个像素4字节，计算总字节再转KB
+                val byteCount = value.intrinsicWidth * value.intrinsicHeight * 4
+                byteCount / 1024
+            } else {
+                // 无法获取宽高默认占用1KB
+                1
+            }
+        }
+    }
 
     suspend fun getRunningProcess(context: Context = App.instance): List<AppInfo> =
         withContext(Dispatchers.IO) {
@@ -35,7 +47,9 @@ object ProcessUtil {
                 if ((appInfo.flags and ApplicationInfo.FLAG_STOPPED) != 0) continue
                 try {
                     val appName = packageManager.getApplicationLabel(appInfo).toString()
-                    val icon = appInfo.loadIcon(packageManager)
+                    val icon = iconCache[packageName] ?: appInfo.loadIcon(packageManager).also {
+                        iconCache.put(packageName, it)
+                    }
                     val lastUseTime = lastUsageTimes[packageName] ?: -1L
 
                     appInfoList.add(
@@ -47,11 +61,9 @@ object ProcessUtil {
                         )
                     )
                 } catch (_: Exception) {
-                    Log.w(TAG, "skip app: $packageName")
                 }
             }
 
-            Log.d(TAG, "running apps: \n${appInfoList.joinToString("\n") { it.appName }}")
             return@withContext appInfoList
         }
 
