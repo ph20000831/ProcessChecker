@@ -1,7 +1,6 @@
 package com.ph.processchecker.notify
 
 import android.content.Context
-import android.content.Intent
 import androidx.work.CoroutineWorker
 import androidx.work.ExistingPeriodicWorkPolicy
 import androidx.work.PeriodicWorkRequestBuilder
@@ -34,19 +33,13 @@ class ProcessCheckWorker(
     override suspend fun doWork(): Result {
         logD(TAG) { "doWork" }
         if (isSleepTime()) {
-            ForegroundService.stopForegroundService(applicationContext)
+//            ForegroundService.stopForegroundService(applicationContext)
             logD(TAG) { "isSleepTime" }
             return Result.success()
         }
         return try {
             val count = ProcessUtil.getRunningProcess(applicationContext).size
-            applicationContext.startService(
-                Intent(
-                    applicationContext,
-                    ForegroundService::class.java
-                ).apply {
-                    putExtra(ForegroundService.EXTRA_COUNT, count)
-                })
+            ForegroundService.startForegroundService(applicationContext, count)
             Result.success()
         } catch (_: Exception) {
             Result.success()

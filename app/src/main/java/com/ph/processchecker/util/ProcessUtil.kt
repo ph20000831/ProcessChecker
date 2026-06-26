@@ -67,7 +67,6 @@ object ProcessUtil {
             return@withContext appInfoList
         }
 
-    @Suppress("DEPRECATION")
     private fun getInstalledApplications(packageManager: PackageManager): List<ApplicationInfo> {
         return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
             packageManager.getInstalledApplications(PackageManager.ApplicationInfoFlags.of(0))
@@ -84,7 +83,6 @@ object ProcessUtil {
                 usageStatsManager.queryAndAggregateUsageStats(0, System.currentTimeMillis())
                     .mapValues { it.value.lastTimeUsed }
             } else {
-                @Suppress("DEPRECATION")
                 val stats = usageStatsManager.queryUsageStats(
                     UsageStatsManager.INTERVAL_DAILY,
                     0,
