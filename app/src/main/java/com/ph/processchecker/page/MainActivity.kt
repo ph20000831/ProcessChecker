@@ -34,6 +34,7 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Switch
 import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
+import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -156,85 +157,95 @@ private fun MainContent(
             handleUiIntent(MainContract.UiIntent.ChangeShowUsageStatsPermissionBottomSheet(true))
         }
     }
-    Scaffold(modifier = Modifier.fillMaxSize()) { innerPadding ->
-        LazyColumn(
-            modifier = modifier
-                .padding(innerPadding)
+    Scaffold(modifier = modifier.fillMaxSize()) { innerPadding ->
+        PullToRefreshBox(
+            isRefreshing = uiState.loading,
+            onRefresh = {
+                handleUiIntent(MainContract.UiIntent.Refresh)
+            },
+            modifier = Modifier
                 .fillMaxSize()
+                .padding(innerPadding)
         ) {
-            stickyHeader {
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(44.dp)
-                        .background(color = Color.White),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Spacer(Modifier.width(16.dp))
-                    Text(
-                        text = stringResource(R.string.app_name),
-                        fontSize = 18.sp,
-                        fontWeight = FontWeight(500),
-                        color = Color(0xFF1A1A1A)
-                    )
-                    Spacer(Modifier.weight(1f))
-                    Text(
-                        text = stringResource(R.string.notify),
-                        fontSize = 16.sp,
-                        fontWeight = FontWeight(400),
-                        color = Color(0xFF999999)
-                    )
-                    Spacer(Modifier.width(8.dp))
-                    Switch(
-                        checked = uiState.checkedNotifySwitch,
-                        onCheckedChange = { checked ->
-                            if (checked) {
-                                if (context.hasNotificationPermission()) {
-                                    ForegroundService.startForegroundService(
-                                        context,
-                                        uiState.data.size
-                                    )
+            LazyColumn(modifier = Modifier.fillMaxSize()) {
+                stickyHeader {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(44.dp)
+                            .background(color = Color.White),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Spacer(Modifier.width(16.dp))
+                        Text(
+                            text = stringResource(R.string.app_name),
+                            fontSize = 18.sp,
+                            fontWeight = FontWeight(500),
+                            color = Color(0xFF1A1A1A)
+                        )
+                        Spacer(Modifier.weight(1f))
+                        Text(
+                            text = stringResource(R.string.notify),
+                            fontSize = 16.sp,
+                            fontWeight = FontWeight(400),
+                            color = Color(0xFF999999)
+                        )
+                        Spacer(Modifier.width(8.dp))
+                        Switch(
+                            checked = uiState.checkedNotifySwitch,
+                            onCheckedChange = { checked ->
+                                if (checked) {
+                                    if (context.hasNotificationPermission()) {
+                                        ForegroundService.startForegroundService(
+                                            context,
+                                            uiState.data.size
+                                        )
+                                        handleUiIntent(
+                                            MainContract.UiIntent.ChangeCheckedNotifySwitch(
+                                                true
+                                            )
+                                        )
+                                    } else {
+                                        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                                            notifyPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
+                                        }
+                                    }
+                                } else {
+                                    ForegroundService.stopForegroundService(context)
                                     handleUiIntent(
                                         MainContract.UiIntent.ChangeCheckedNotifySwitch(
-                                            true
+                                            false
                                         )
                                     )
-                                } else {
-                                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-                                        notifyPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
-                                    }
                                 }
-                            } else {
-                                ForegroundService.stopForegroundService(context)
-                                handleUiIntent(MainContract.UiIntent.ChangeCheckedNotifySwitch(false))
-                            }
-                        },
-                        colors = SwitchDefaults.colors(
-                            checkedThumbColor = Color.White,
-                            checkedTrackColor = Color(0xFF1462FA),
-                            uncheckedThumbColor = Color.White,
-                            uncheckedTrackColor = Color(0xFFD4D4D4),
-                        )
-                    )
-                    Spacer(Modifier.width(16.dp))
-                }
-            }
-            uiState.data.forEach {
-                item {
-                    AppItem(
-                        appInfo = it,
-                        onClick = {
-                            appSettingJumpLauncher.launch(Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS).apply {
-                                data = "package:${it.packageName}".toUri()
-//                                flags = Intent.FLAG_ACTIVITY_NEW_TASK
-                            })
-                            ProcessWatcher.startWatch(
-                                backActivity = MainActivity::class.java,
-                                oldList = uiState.data,
-                                targetApp = it,
+                            },
+                            colors = SwitchDefaults.colors(
+                                checkedThumbColor = Color.White,
+                                checkedTrackColor = Color(0xFF1462FA),
+                                uncheckedThumbColor = Color.White,
+                                uncheckedTrackColor = Color(0xFFD4D4D4),
                             )
-                        }
-                    )
+                        )
+                        Spacer(Modifier.width(16.dp))
+                    }
+                }
+                uiState.data.forEach {
+                    item {
+                        AppItem(
+                            appInfo = it,
+                            onClick = {
+                                appSettingJumpLauncher.launch(Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS).apply {
+                                    data = "package:${it.packageName}".toUri()
+//                                flags = Intent.FLAG_ACTIVITY_NEW_TASK
+                                })
+                                ProcessWatcher.startWatch(
+                                    backActivity = MainActivity::class.java,
+                                    oldList = uiState.data,
+                                    targetApp = it,
+                                )
+                            }
+                        )
+                    }
                 }
             }
         }
