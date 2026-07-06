@@ -5,13 +5,15 @@ import android.util.Log
 var log = true
 
 inline fun Any.logD(tag: String, messageBuilder: () -> String) {
+    val currentTag = tag.ifBlank { this::class.simpleName }
     if (log) {
-        Log.d(tag, messageBuilder())
+        Log.d(currentTag, messageBuilder())
     }
 }
 
 inline fun Any.logE(tag: String, messageBuilder: () -> String) {
+    val currentTag = tag.ifBlank { this::class.simpleName }
     if (log) {
-        Log.e(tag, messageBuilder())
+        Log.e(currentTag, messageBuilder())
     }
 }

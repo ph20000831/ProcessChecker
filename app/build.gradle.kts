@@ -19,13 +19,30 @@ android {
         versionName = "1.0.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+
+        ndk {
+            //noinspection ChromeOsAbiSupport
+            abiFilters += listOf("arm64-v8a")
+        }
+    }
+
+    signingConfigs {
+        create("release") {
+            storeFile = file("../key.jks")
+            storePassword = "ph1234"
+            keyAlias = "key"
+            keyPassword = "ph1234"
+        }
     }
 
     buildTypes {
         release {
+            isMinifyEnabled = true
+            isShrinkResources = true
             optimization {
                 enable = false
             }
+            signingConfig = signingConfigs.getByName("release")
         }
     }
     compileOptions {
@@ -35,6 +52,11 @@ android {
     buildFeatures {
         compose = true
     }
+}
+
+base {
+    val versionName = android.defaultConfig.versionName
+    archivesName = "processChecker_v$versionName"
 }
 
 dependencies {
@@ -59,5 +81,5 @@ dependencies {
     implementation(libs.androidx.lifecycle.viewmodel.compose)
 
     //workManger
-    implementation("androidx.work:work-runtime-ktx:2.11.2")
+    implementation(libs.androidx.work.runtime.ktx)
 }

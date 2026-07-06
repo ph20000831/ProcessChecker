@@ -7,7 +7,7 @@ import android.os.Handler
 import android.os.Looper
 import com.ph.processchecker.App
 import com.ph.processchecker.ext.logD
-import com.ph.processchecker.model.AppInfo
+import com.ph.processchecker.module.AppInfo
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job

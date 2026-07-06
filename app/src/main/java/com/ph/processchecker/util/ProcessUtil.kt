@@ -8,7 +8,7 @@ import android.graphics.drawable.Drawable
 import android.os.Build
 import androidx.collection.LruCache
 import com.ph.processchecker.App
-import com.ph.processchecker.model.AppInfo
+import com.ph.processchecker.module.AppInfo
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
@@ -45,7 +45,7 @@ object ProcessUtil {
                 if (isSystemApp(appInfo)) continue
                 if (!appInfo.enabled) continue
                 if ((appInfo.flags and ApplicationInfo.FLAG_STOPPED) != 0) continue
-                try {
+                runCatching {
                     val appName = packageManager.getApplicationLabel(appInfo).toString()
                     val icon = iconCache[packageName] ?: appInfo.loadIcon(packageManager).also {
                         iconCache.put(packageName, it)
@@ -60,7 +60,6 @@ object ProcessUtil {
                             lastUseTime = lastUseTime
                         )
                     )
-                } catch (_: Exception) {
                 }
             }
 
@@ -76,7 +75,7 @@ object ProcessUtil {
     }
 
     private fun getLastUsageTimes(context: Context): Map<String, Long> {
-        return try {
+        return runCatching {
             val usageStatsManager =
                 context.getSystemService(Context.USAGE_STATS_SERVICE) as UsageStatsManager
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
@@ -90,9 +89,7 @@ object ProcessUtil {
                 ) ?: return emptyMap()
                 stats.associate { it.packageName to it.lastTimeUsed }
             }
-        } catch (_: SecurityException) {
-            emptyMap()
-        }
+        }.getOrDefault(emptyMap())
     }
 
     private fun isSystemApp(applicationInfo: ApplicationInfo): Boolean {

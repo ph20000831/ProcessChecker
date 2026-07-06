@@ -8,6 +8,7 @@ import androidx.work.WorkManager
 import androidx.work.WorkerParameters
 import com.ph.processchecker.ext.isSleepTime
 import com.ph.processchecker.ext.logD
+import com.ph.processchecker.ext.logE
 import com.ph.processchecker.util.ProcessUtil
 import java.util.concurrent.TimeUnit
 
@@ -37,12 +38,13 @@ class ProcessCheckWorker(
             logD(TAG) { "isSleepTime" }
             return Result.success()
         }
-        return try {
+        return runCatching {
             val count = ProcessUtil.getRunningProcess(applicationContext).size
             ForegroundService.startForegroundService(applicationContext, count)
             Result.success()
-        } catch (_: Exception) {
-            Result.success()
+        }.getOrElse { t ->
+            logE(TAG) { "error: ${t.message}" }
+            Result.retry()
         }
     }
 

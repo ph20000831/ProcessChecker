@@ -25,6 +25,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.TextAutoSize
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
@@ -51,6 +52,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -67,7 +69,7 @@ import com.ph.processchecker.ext.hasUsageStatsPermission
 import com.ph.processchecker.ext.logD
 import com.ph.processchecker.ext.startListenPermissionGranted
 import com.ph.processchecker.ext.stopListenPermissionGranted
-import com.ph.processchecker.model.AppInfo
+import com.ph.processchecker.module.AppInfo
 import com.ph.processchecker.notify.ForegroundService
 import com.ph.processchecker.ui.composable.AppImage
 import com.ph.processchecker.ui.theme.AppTheme
@@ -328,6 +330,7 @@ private fun AppItem(appInfo: AppInfo, modifier: Modifier = Modifier, onClick: ()
                 fontWeight = FontWeight(500),
                 color = Color(0xFF1A1A1A),
                 maxLines = 1,
+                autoSize = TextAutoSize.StepBased(maxFontSize = 16.sp)
             )
             Spacer(Modifier.height(2.dp))
             Text(
@@ -336,6 +339,7 @@ private fun AppItem(appInfo: AppInfo, modifier: Modifier = Modifier, onClick: ()
                 fontWeight = FontWeight(400),
                 color = Color(0xFF999999),
                 maxLines = 1,
+                autoSize = TextAutoSize.StepBased(maxFontSize = 12.sp)
             )
         }
         Spacer(Modifier.width(12.dp))
@@ -343,7 +347,8 @@ private fun AppItem(appInfo: AppInfo, modifier: Modifier = Modifier, onClick: ()
             text = lastUseTime,
             fontSize = 12.sp,
             fontWeight = FontWeight(400),
-            color = Color(0xFF999999)
+            color = Color(0xFF999999),
+            textAlign = TextAlign.End
         )
         Spacer(Modifier.width(16.dp))
     }

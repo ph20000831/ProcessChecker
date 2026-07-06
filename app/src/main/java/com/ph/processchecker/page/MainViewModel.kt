@@ -1,13 +1,13 @@
 package com.ph.processchecker.page
 
-import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.ph.processchecker.App
 import com.ph.processchecker.base.MVI
 import com.ph.processchecker.base.MVIDelegate
 import com.ph.processchecker.ext.hasNotificationPermission
-import com.ph.processchecker.model.AppInfo
+import com.ph.processchecker.ext.logD
+import com.ph.processchecker.module.AppInfo
 import com.ph.processchecker.util.ProcessUtil
 import com.ph.processchecker.util.sp.AppSp
 import kotlinx.coroutines.Dispatchers
@@ -45,7 +45,7 @@ class MainViewModel : ViewModel(),
         viewModelScope.launch {
             val check = App.instance.hasNotificationPermission() && AppSp.notifySwitch
             val data = ProcessUtil.getRunningProcess()
-            Log.d(TAG, "running apps: \n${data.joinToString("\n") { it.appName }}")
+            logD(TAG) { "running apps: \n${data.joinToString("\n") { it.appName }}" }
             setUiState {
                 copy(
                     loading = false,
